@@ -1,0 +1,30 @@
+# 忽略指定的服务器构建目录
+ChatServer/ChatServer/
+ChatServer2/ChatServer/
+GateServer/GateServer/
+StatusServer/StatusServer/
+ChatServer/x64/
+ChatServer2/x64/
+GateServer/x64/
+StatusServer/x64/
+
+# 忽略编译输出目录
+build/
+bin/
+obj/
+dist/
+*.o
+*.dll
+*.so
+*.exe
+VarifyServer/node_modules/
+
+# 忽略 IDE 配置文件
+.idea/
+.vs/
+.vscode/
+*.suo
+*.user
+*.ncb
+
+
