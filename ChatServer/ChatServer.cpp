@@ -40,7 +40,7 @@ int main()
 		auto port_str = cfg["SelfServer"]["Port"];
 		auto pointer_server = std::make_shared<CServer>(io_context, atoi(port_str.c_str()));
 		//启动定时器
-		//pointer_server->StartTimer();
+		pointer_server->StartTimer();
 
 		//定义一个GrpcServer
 		std::string server_address(cfg["SelfServer"]["Host"] + ":" + cfg["SelfServer"]["RPCPort"]);
