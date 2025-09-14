@@ -19,25 +19,28 @@ std::mutex mutex_quit;
 
 int main()
 {
+	// 1. 配置读取
 	auto& cfg = ConfigMgr::Inst();
 	auto server_name = cfg["SelfServer"]["Name"];
+	std::cout << "-main():server_name:" << server_name << std::endl;
+
 	try {
 		auto pool = AsioIOServicePool::GetInstance();
 
-		//将登录数设置为0
-		RedisMgr::GetInstance()->HSet(LOGIN_COUNT, server_name, "0");
+		//2. Redis 初始化与登录数注册
+		RedisMgr::GetInstance()->HSet(LOGIN_COUNT, server_name, "0");		//启动时将自己的在线用户数置为 0（Redis 哈希表中）
 		Defer derfer ([server_name]() {
 				RedisMgr::GetInstance()->HDel(LOGIN_COUNT, server_name);
 				RedisMgr::GetInstance()->Close();
 			});
 
 
-		//创建一个 CServer 实例，绑定到指定端口；
+		//3. 创建 TCP 服务器（CServer）
 		boost::asio::io_context  io_context;
 		auto port_str = cfg["SelfServer"]["Port"];
 		auto pointer_server = std::make_shared<CServer>(io_context, atoi(port_str.c_str()));
 		//启动定时器
-		//pointer_server->StartTimer();
+		pointer_server->StartTimer();
 
 		//定义一个GrpcServer
 		std::string server_address(cfg["SelfServer"]["Host"] + ":" + cfg["SelfServer"]["RPCPort"]);
@@ -58,7 +61,7 @@ int main()
 
 			});
 
-	
+		// 6. 设置系统信号处理（退出时回收资源）
 		boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
 		signals.async_wait([&io_context, pool, &server](auto, auto) {
 			io_context.stop();
@@ -67,7 +70,7 @@ int main()
 			});
 		
 	
-		//将Cserver注册给逻辑类方便以后清除连接
+		// 7. 启动主事件循环
 		LogicSystem::GetInstance()->SetServer(pointer_server);
 		io_context.run();
 

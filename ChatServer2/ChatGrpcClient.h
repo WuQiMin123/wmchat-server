@@ -16,6 +16,7 @@ using grpc::Channel;
 using grpc::Status;
 using grpc::ClientContext;
 
+using message::AddFriendMsg;
 using message::AddFriendReq;
 using message::AddFriendRsp;
 

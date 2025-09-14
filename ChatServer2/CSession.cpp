@@ -77,9 +77,12 @@ void CSession::Send(char* msg, short max_length, short msgid) {
 }
 
 void CSession::Close() {
-	std::lock_guard<std::mutex> lock(_session_mtx);
-	_socket.close();
-	_b_close = true;
+	if (_socket.is_open()) {
+		std::lock_guard<std::mutex> lock(_session_mtx);
+		boost::system::error_code ec;
+		_socket.close();
+		_b_close = true;
+	}
 }
 
 std::shared_ptr<CSession>CSession::SharedSelf() {
@@ -92,7 +95,7 @@ void CSession::AsyncReadBody(int total_len)
 	asyncReadFull(total_len, [self, this, total_len](const boost::system::error_code& ec, std::size_t bytes_transfered) {
 		try {
 			if (ec) {
-				std::cout << "handle read failed, error is " << ec.what() << endl;
+				std::cout << "AsyncReadBody handle read failed, error is " << ec.what() << endl;
 				Close();
 				DealExceptionSession();
 				return;
@@ -131,11 +134,21 @@ void CSession::AsyncReadBody(int total_len)
 
 void CSession::AsyncReadHead(int total_len)
 {
+	
 	auto self = shared_from_this();
-	asyncReadFull(HEAD_TOTAL_LEN, [self, this](const boost::system::error_code& ec, std::size_t bytes_transfered) {
+
+	// 异步读取指定长度的数据；直到读满 len 字节后才触发回调；
+	asyncReadFull(HEAD_TOTAL_LEN, [self, this](const boost::system::error_code& ec, std::size_t bytes_transfered) {		
+		if (!_socket.is_open()) {
+			std::cout << "[AsyncReadHead] socket already closed." << std::endl;
+			return;
+		}
+
 		try {
 			if (ec) {
-				std::cout << "handle read failed, error is " << ec.what() << endl;
+				std::cout << "[AsyncReadHead] failed, ec: " << ec.message()
+					<< " (" << ec.value() << ")" << std::endl;
+				std::cout << "AsyncReadHead handle read failed, error is " << ec.what() << endl;
 				Close();
 				DealExceptionSession();
 				return;
@@ -176,7 +189,7 @@ void CSession::AsyncReadHead(int total_len)
 			msg_len = boost::asio::detail::socket_ops::network_to_host_short(msg_len);
 			std::cout << "msg_len is " << msg_len << endl;
 
-			//id非法
+			//len非法
 			if (msg_len > MAX_LENGTH) {
 				std::cout << "invalid data length is " << msg_len << endl;
 				_server->ClearSession(_session_id);
